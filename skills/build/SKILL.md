@@ -67,6 +67,12 @@ their SKILL.md frontmatter.
 ### Optional frontmatter
 
 - `metadata`: `sort_order` (int), `icon` (emoji)
+- `depends`: list of skill dependencies in
+  `<marketplace>/<slug>[@version]` format. Declares that this
+  skill calls scripts from another skill. The runtime
+  automatically grants VFS read+write access to each
+  dependency's file tree -- no manual `requires.vfs` needed.
+  Version defaults to `latest` if omitted.
 - `requires`:
   - `network`: list of base URLs the skill can reach
   - `secrets`: list of `{name}` with optional `provider`,
@@ -75,8 +81,9 @@ their SKILL.md frontmatter.
   - `oauth_scopes`: list of Google OAuth scope URIs
   - `vfs`: list of `{path, access}` (read/write, `/*` globs).
     Skills automatically have read+write access to their own
-    `/skills/user/{slug}/*` tree. `requires.vfs` is only needed for
-    paths OUTSIDE the skill's own tree (rare).
+    `/skills/user/{slug}/*` tree. `requires.vfs` is only for
+    non-skill paths (like `/sys/gchat/dm`). Cross-skill file
+    access should always use `depends` instead.
 
 Populate `signup_url` and `instructions` on secrets so users
 know how to obtain the key.
@@ -119,7 +126,26 @@ requires:
 ---
 ```
 
-### Google OAuth + VFS
+### Cross-skill dependencies
+
+Use `depends` when your skill calls scripts from another skill.
+The runtime auto-grants VFS access to each dependency's tree:
+
+```yaml
+---
+schema_version: "1.0.0"
+name: my-notifier
+description: Summarize and notify via Google Chat
+allowed-tools: exec_file read_file
+depends:
+  - 111b16ac/gchat-send
+requires:
+  network:
+    - https://chat.googleapis.com
+---
+```
+
+### Google OAuth
 
 ```yaml
 ---
@@ -130,15 +156,12 @@ allowed-tools: read_file exec_file
 requires:
   oauth_scopes:
     - https://www.googleapis.com/auth/calendar.readonly
-  vfs:
-    - path: /skills/user/shared-reports/data/*
-      access: read
 ---
 ```
 
-The `vfs` entry above grants access to another skill's data.
-A skill's own `/skills/<marketplace>/{slug}/*` tree is always
-accessible.
+Use `requires.vfs` only for non-skill paths (like
+`/sys/gchat/dm`). A skill's own file tree is always
+accessible, and cross-skill access uses `depends`.
 
 ## Skill data storage
 
