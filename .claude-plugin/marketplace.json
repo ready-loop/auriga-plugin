@@ -1,0 +1,13 @@
+{
+  "name": "readyloop",
+  "owner": {
+    "name": "ReadyLoop"
+  },
+  "plugins": [
+    {
+      "name": "auriga",
+      "source": "./",
+      "description": "Build and manage Auriga skills and automations"
+    }
+  ]
+}
