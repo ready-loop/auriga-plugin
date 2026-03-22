@@ -181,6 +181,7 @@ automatically). For concurrent read-modify-write use
 `transform(raw_bytes)` and writes the result. The transform
 must be a pure function: return new bytes, no side effects
 (no `output_json` inside). On no-op, return `raw` unchanged.
+To abort without writing (e.g. validation error), return `None`.
 `atomic_update` creates the file if it does not exist
 (the transform receives `b""` for new files). Do NOT
 pre-create files with `write_vfs_file` before using
