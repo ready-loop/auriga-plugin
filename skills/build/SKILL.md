@@ -58,8 +58,6 @@ YAML frontmatter + markdown body (the skill agent's prompt).
 - `schema_version`: always `"1.0.0"` (required for publishing)
 - `name`: kebab-case identifier
 - `description`: one-line summary
-- `allowed-tools`: space-separated subset of
-  `read_file write_file exec_file web_search`
 
 Publishing will reject skills missing `schema_version` in
 their SKILL.md frontmatter.
@@ -112,7 +110,6 @@ required keys. Missing keys: direct to Settings > API Keys.
 schema_version: "1.0.0"
 name: weather-lookup
 description: Look up weather forecasts
-allowed-tools: exec_file web_search
 requires:
   network:
     - https://api.openweathermap.org
@@ -136,7 +133,6 @@ The runtime auto-grants VFS access to each dependency's tree:
 schema_version: "1.0.0"
 name: my-notifier
 description: Summarize and notify via Google Chat
-allowed-tools: exec_file read_file
 depends:
   - 111b16ac/gchat-send
 requires:
@@ -152,7 +148,6 @@ requires:
 schema_version: "1.0.0"
 name: my-calendar
 description: Read calendar events
-allowed-tools: read_file exec_file
 requires:
   oauth_scopes:
     - https://www.googleapis.com/auth/calendar.readonly
@@ -343,7 +338,6 @@ endpoints, and response format.
 schema_version: "1.0.0"
 name: stock-price
 description: Look up current stock prices
-allowed-tools: exec_file
 requires:
   network:
     - https://query1.finance.yahoo.com
@@ -387,7 +381,6 @@ if __name__ == "__main__":
 schema_version: "1.0.0"
 name: todo
 description: Manage a personal todo list
-allowed-tools: exec_file
 ---
 ```
 
