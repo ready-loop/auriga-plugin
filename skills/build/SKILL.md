@@ -173,19 +173,10 @@ Persistent data path: `/skill/data/{filename}` inside scripts
 - Implicitly writable (no `requires.vfs` needed)
 - NEVER use bare paths like `/data/foo` — will ENOENT
 
-Scripts use `read_vfs_file` / `write_vfs_file` from
-`auriga.ion.vfs` with `/skill/data/...` paths (the
-`/skill` mount is bound to the skill's VFS subtree
-automatically). For concurrent read-modify-write use
-`atomic_update`. `atomic_update(path, transform)` calls
-`transform(raw_bytes)` and writes the result. The transform
-must be a pure function: return new bytes, no side effects
-(no `output_json` inside). On no-op, return `raw` unchanged.
-To abort without writing (e.g. validation error), return `None`.
-`atomic_update` creates the file if it does not exist
-(the transform receives `b""` for new files). Do NOT
-pre-create files with `write_vfs_file` before using
-`atomic_update`.
+Scripts access data via standard Python file operations
+(`open`, `read`, `write`) using `/skill/data/...` paths.
+The `/skill` mount is bound to the skill's VFS subtree
+automatically.
 
 ## Script development
 
