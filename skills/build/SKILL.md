@@ -237,22 +237,44 @@ api_key = get_secret("OPENWEATHER_API_KEY")
 
 ### Google API scripts
 
-Use `scope_guard` for Google API auth:
+Use `service()` for raw Google API access with `scope_guard`:
 
 ```python
 #!/usr/bin/env python3
-import sys
-from auriga.ion.google.calendar import list_events
+from auriga.ion.google import service, scope_guard
 from auriga.ion.output import output_json
 
 def main():
-    events = list_events(sys.argv[1], sys.argv[2])
-    output_json(events)
+    # service() returns a raw google-api-python-client Resource.
+    # access="read" requests read-only scopes; "write" for read+write.
+    cal = service("calendar", "v3", access="read")
+    events = cal.events().list(
+        calendarId="primary", maxResults=10,
+        singleEvents=True, orderBy="startTime",
+    ).execute()
+    output_json(events.get("items", []))
 
 if __name__ == "__main__":
-    from auriga.ion.google import scope_guard
     with scope_guard():
         main()
+```
+
+`service()` returns a `google-api-python-client` Resource —
+methods map 1:1 to the REST API. Supported services:
+
+- `calendar` v3 — developers.google.com/calendar/api/v3/reference
+- `gmail` v1 — developers.google.com/gmail/api/reference/rest
+- `drive` v3 — developers.google.com/drive/api/reference/rest/v3
+- `sheets` v4 — developers.google.com/sheets/api/reference/rest
+- `docs` v1 — developers.google.com/docs/api/reference/rest
+- `slides` v1 — developers.google.com/slides/api/reference/rest
+
+Each also has a convenience module with `api()`:
+
+```python
+from auriga.ion.google.calendar import api, list_events
+cal = api(access="read")  # same as service("calendar", "v3", access="read")
+events = list_events(time_min, time_max)  # convenience wrapper
 ```
 
 ### HTTP scripts
@@ -310,8 +332,8 @@ packages.
 
 - `auriga.ion.output` — `output_json`, `output_error`
 - `auriga.ion.vfs` — VFS helpers, `get_secret`
-- `auriga.ion.google` — auth, `scope_guard`
-- `auriga.ion.google.{calendar,gmail,sheets,drive,crm,org}`
+- `auriga.ion.google` — `service()`, `scope_guard`
+- `auriga.ion.google.{calendar,gmail,sheets,drive,docs,slides,crm,org}`
 
 Full signatures: read MCP resource `auriga://docs/ion/{module}`
 or `auriga://docs/ion/google/{service}`.

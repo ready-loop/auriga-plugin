@@ -4,7 +4,7 @@
       "type": "http",
       "url": "https://mcp.readyloop.ai/mcp",
       "headers": {
-        "X-Generator-Version": "auriga-plugin/1.0.23"
+        "X-Generator-Version": "auriga-plugin/1.0.24"
       }
     }
   }
