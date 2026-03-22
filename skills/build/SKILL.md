@@ -82,7 +82,7 @@ their SKILL.md frontmatter.
   - `vfs`: list of `{path, access}` (read/write, `/*` globs).
     Skills automatically have read+write access to their own
     `/skills/user/{slug}/*` tree. `requires.vfs` is only for
-    non-skill paths (like `/sys/gchat/dm`). Cross-skill file
+    non-skill paths (like `/sys/channels/gchat/dm`). Cross-skill file
     access should always use `depends` instead.
 
 Populate `signup_url` and `instructions` on secrets so users
@@ -160,7 +160,7 @@ requires:
 ```
 
 Use `requires.vfs` only for non-skill paths (like
-`/sys/gchat/dm`). A skill's own file tree is always
+`/sys/channels/gchat/dm`). A skill's own file tree is always
 accessible, and cross-skill access uses `depends`.
 
 ## Skill data storage
@@ -324,7 +324,7 @@ packages.
 - `auriga.ion.output` — `output_json`, `output_error`
 - `auriga.ion.vfs` — VFS helpers, `get_secret`
 - `auriga.ion.google` — `service()`, `scope_guard`
-- `auriga.ion.google.{calendar,gmail,sheets,drive,docs,slides,crm,org}`
+- `auriga.ion.google.{calendar,gmail,sheets,drive,docs,slides}`
 
 Full signatures: read MCP resource `auriga://docs/ion/{module}`
 or `auriga://docs/ion/google/{service}`.
