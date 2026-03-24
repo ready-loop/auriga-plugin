@@ -150,7 +150,7 @@ name: my-calendar
 description: Read calendar events
 requires:
   oauth_scopes:
-    - https://www.googleapis.com/auth/calendar.readonly
+    - https://www.googleapis.com/auth/calendar.events.readonly
 ---
 ```
 
