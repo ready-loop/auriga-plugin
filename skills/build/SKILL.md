@@ -281,12 +281,11 @@ Each service also has a convenience module with helpers.
 IMPORTANT: Before writing scripts that use these convenience
 functions, you MUST read the API reference to check signatures:
 
-    ion_read("/sys/docs/ion/google/sheets")
+    ion_read("/sys/docs/ion/google/calendar")
 
 Replace `sheets` with the service you need (calendar, gmail,
 drive, docs, slides). Do NOT guess at function signatures —
-many have opinionated defaults (e.g. `list_sheets()` takes no
-args and already scopes to the Auriga/ folder).
+many have opinionated defaults.
 
 Each module also exposes `api(access=...)` for raw Google API
 access (same as `service()`).
