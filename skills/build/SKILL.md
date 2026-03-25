@@ -30,8 +30,15 @@ skills, `ion_list` to browse files, `ion_read` to read them.
 4. If new: `create_draft(skill_name)` to allocate the slug
    (may be deconflicted). Then `ion_write` the SKILL.md and
    scripts to `/skills/user/{slug}/draft/`.
-5. Test with `run_skill(skill_name, prompt)` — iterate
-6. `publish_skill(skill_name)` to release
+5. Before writing scripts that use Ion SDK modules, read
+   their API docs to check signatures:
+   `ion_read("/sys/docs/ion/google/{service}")` (sheets,
+   calendar, gmail, drive, docs, slides)
+   `ion_read("/sys/docs/ion/{module}")` (vfs, output, flow,
+   scopes, oauth, cards, claude_chat)
+   Do NOT guess at function signatures.
+6. Test with `run_skill(skill_name, prompt)` — iterate
+7. `publish_skill(skill_name)` to release
 
 ### Version lifecycle
 
