@@ -88,6 +88,8 @@ their SKILL.md frontmatter.
     drive.file is only needed for Auriga/ folder operations:
     list_sheets, list_docs, list_presentations,
     create_sheet, create_doc, create_presentation.
+    These list_*/create_* functions already scope to the user's
+    Auriga/ Drive folder — they take NO folder parameter.
     ID-based operations (read_rows, append_rows, api()) and
     calendar/gmail do NOT need drive.file.
   - `vfs`: list of `{path, access}` (read/write, `/*` globs).
@@ -268,13 +270,19 @@ methods map 1:1 to the REST API. Supported services:
 - `docs` v1 — developers.google.com/docs/api/reference/rest
 - `slides` v1 — developers.google.com/slides/api/reference/rest
 
-Each also has a convenience module with `api()`:
+Each service also has a convenience module with helpers.
+IMPORTANT: Before writing scripts that use these convenience
+functions, you MUST read the API reference to check signatures:
 
-```python
-from auriga.ion.google.calendar import api, list_events
-cal = api(access="read")  # same as service("calendar", "v3", access="read")
-events = list_events(time_min, time_max)  # convenience wrapper
-```
+    ion_read("/sys/docs/ion/google/sheets")
+
+Replace `sheets` with the service you need (calendar, gmail,
+drive, docs, slides). Do NOT guess at function signatures —
+many have opinionated defaults (e.g. `list_sheets()` takes no
+args and already scopes to the Auriga/ folder).
+
+Each module also exposes `api(access=...)` for raw Google API
+access (same as `service()`).
 
 ### HTTP scripts
 
@@ -334,8 +342,9 @@ packages.
 - `auriga.ion.google` — `service()`, `scope_guard`
 - `auriga.ion.google.{calendar,gmail,sheets,drive,docs,slides}`
 
-Full signatures: read MCP resource `auriga://docs/ion/{module}`
-or `auriga://docs/ion/google/{service}`.
+Read API docs: `ion_read("/sys/docs/ion/{module}")` or
+`ion_read("/sys/docs/ion/google/{service}")`. Always check
+signatures before using convenience functions.
 
 ## Researching APIs
 
