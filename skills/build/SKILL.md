@@ -207,9 +207,23 @@ SKILL.md examples MUST use relative paths and include
 is substituted with the actual skill slug at load time:
 
 ```
-exec_file("scripts/run.py", ["arg"], skill_name="{SKILL_NAME}")
+exec_file("scripts/run.py", ["arg"], skill_name="{SKILL_NAME}",
+         user_display_hint="Running task...")
 read_file("data/items.json", skill_name="{SKILL_NAME}")
 ```
+
+### Status hints
+
+Always pass `user_display_hint` to show a status message in
+the chat UI while a script runs:
+
+```
+exec_file("scripts/tts.py", ["chunk-1"], skill_name="{SKILL_NAME}",
+          user_display_hint="Generating audio chunk 1/5...")
+```
+
+Use hints for long-running or multi-step scripts so users see
+progress instead of a blank spinner.
 
 Scripts access their own data via `/skill/data/...` (a bind
 mount to the skill's VFS subtree). The env var
@@ -378,7 +392,7 @@ You are a stock price assistant.
 ## Available tools
 
 - `scripts/lookup.py <ticker>`
-  Example: `exec_file("scripts/lookup.py", ["AAPL"], skill_name="{SKILL_NAME}")`
+  Example: `exec_file("scripts/lookup.py", ["AAPL"], skill_name="{SKILL_NAME}", user_display_hint="Looking up AAPL...")`
 ```
 
 ```python
@@ -417,10 +431,10 @@ You manage the user's todo list.
 
 ## Tools
 
-- `exec_file("scripts/todo.py", ["list"], skill_name="{SKILL_NAME}")`
-- `exec_file("scripts/todo.py", ["add", "Buy groceries"], skill_name="{SKILL_NAME}")`
-- `exec_file("scripts/todo.py", ["done", "0"], skill_name="{SKILL_NAME}")`
-- `exec_file("scripts/todo.py", ["remove", "0"], skill_name="{SKILL_NAME}")`
+- `exec_file("scripts/todo.py", ["list"], skill_name="{SKILL_NAME}", user_display_hint="Loading todos...")`
+- `exec_file("scripts/todo.py", ["add", "Buy groceries"], skill_name="{SKILL_NAME}", user_display_hint="Adding todo...")`
+- `exec_file("scripts/todo.py", ["done", "0"], skill_name="{SKILL_NAME}", user_display_hint="Marking done...")`
+- `exec_file("scripts/todo.py", ["remove", "0"], skill_name="{SKILL_NAME}", user_display_hint="Removing todo...")`
 ```
 
 ```python
