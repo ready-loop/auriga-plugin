@@ -25,11 +25,14 @@ skills, `ion_list` to browse files, `ion_read` to read them.
 1. Identify skill name (kebab-case)
 2. `discover_skills()` to check if it exists (shows
    `latest_version` and `has_draft` per skill)
-3. If exists: `ion_read` the SKILL.md, confirm edit or fresh.
-   `ion_list("/skills/user/{name}/latest")` to see all files.
-4. If new: `create_draft(skill_name)` to allocate the slug
-   (may be deconflicted). Then `ion_write` the SKILL.md and
-   scripts to `/skills/user/{slug}/draft/`.
+3. `create_draft(skill_name)` to open a draft:
+   - Existing published skill: draft is pre-populated with
+     all files from the latest version (SKILL.md, scripts,
+     assets). Use `ion_list` to see what's there, then
+     `ion_read`/`ion_write` to update only files that need
+     changing. Do NOT rewrite files that are already correct.
+   - New skill: draft starts with a template SKILL.md.
+     Write SKILL.md and scripts from scratch.
 5. Before writing scripts that use Ion SDK modules, read
    their API docs to check signatures:
    `ion_read("/sys/docs/ion/google/{service}")` (sheets,
@@ -39,6 +42,12 @@ skills, `ion_list` to browse files, `ion_read` to read them.
    Do NOT guess at function signatures.
 6. Test with `run_skill(skill_name, prompt)` — iterate
 7. `publish_skill(skill_name)` to release
+
+IMPORTANT: A skill is not ready for use until published. Always
+call `publish_skill(skill_name)` after successful testing. Do not
+end the build flow with a draft-only skill — users will see it
+as unfinished. Publishing creates an immutable versioned snapshot
+that automations and other users can rely on.
 
 ### Version lifecycle
 
@@ -72,12 +81,6 @@ their SKILL.md frontmatter.
 ### Optional frontmatter
 
 - `metadata`: `sort_order` (int), `icon` (emoji)
-- `depends`: list of skill dependencies in
-  `<marketplace>/<slug>[@version]` format. Declares that this
-  skill calls scripts from another skill. The runtime
-  automatically grants VFS read+write access to each
-  dependency's file tree -- no manual `requires.vfs` needed.
-  Version defaults to `latest` if omitted.
 - `requires`:
   - `network`: list of base URLs the skill can reach
   - `secrets`: list of `{name}` with optional `provider`,
@@ -102,8 +105,7 @@ their SKILL.md frontmatter.
   - `vfs`: list of `{path, access}` (read/write, `/*` globs).
     Skills automatically have read+write access to their own
     `/skills/user/{slug}/*` tree. `requires.vfs` is only for
-    non-skill paths (like `/sys/channels/gchat/dm`). Cross-skill file
-    access should always use `depends` instead.
+    non-skill paths (like `/sys/channels/gchat/dm`).
 
 Populate `signup_url` and `instructions` on secrets so users
 know how to obtain the key.
@@ -145,24 +147,6 @@ requires:
 ---
 ```
 
-### Cross-skill dependencies
-
-Use `depends` when your skill calls scripts from another skill.
-The runtime auto-grants VFS access to each dependency's tree:
-
-```yaml
----
-schema_version: "1.0.0"
-name: my-notifier
-description: Summarize and notify via Google Chat
-depends:
-  - 111b16ac/gchat-send
-requires:
-  network:
-    - https://chat.googleapis.com
----
-```
-
 ### Google OAuth
 
 ```yaml
@@ -178,7 +162,8 @@ requires:
 
 Use `requires.vfs` only for non-skill paths (like
 `/sys/channels/gchat/dm`). A skill's own file tree is always
-accessible, and cross-skill access uses `depends`.
+accessible. To read another skill's files, use
+`requires.vfs` with the appropriate path.
 
 ## Skill data storage
 
@@ -259,11 +244,13 @@ api_key = get_secret("OPENWEATHER_API_KEY")
 
 ### Google API scripts
 
-Use `service()` for raw Google API access with `scope_guard`:
+Use `service()` for raw Google API access. Missing OAuth scopes
+are handled automatically by the runtime (an authorization card
+is shown to the user). No special wrapper needed.
 
 ```python
 #!/usr/bin/env python3
-from auriga.ion.google import service, scope_guard
+from auriga.ion.google import service
 from auriga.ion.output import output_json
 
 def main():
@@ -277,8 +264,7 @@ def main():
     output_json(events.get("items", []))
 
 if __name__ == "__main__":
-    with scope_guard():
-        main()
+    main()
 ```
 
 `service()` returns a `google-api-python-client` Resource —
@@ -359,7 +345,7 @@ packages.
 
 - `auriga.ion.output` — `output_json`, `output_error`
 - `auriga.ion.vfs` — VFS helpers, `get_secret`
-- `auriga.ion.google` — `service()`, `scope_guard`
+- `auriga.ion.google` — `service()`
 - `auriga.ion.google.{calendar,gmail,sheets,drive,docs,slides}`
 
 Read API docs: `ion_read("/sys/docs/ion/{module}")` or
@@ -490,27 +476,24 @@ run_skill("gmail-send", "send this",
                            "body": "Here are the notes"})
 ```
 
+Once tests pass, publish immediately:
+`publish_skill(skill_name)`
+
 ## User context
 
-The current user's email is available via:
+**Never use environment variables for user context. Always use
+the `auriga.ion` SDK functions below.**
 
 ```python
-from auriga.ion.google.gmail import get_user_email
-email = get_user_email()
+from auriga.ion.vfs import get_user_timezone, get_user_email
+
+tz = get_user_timezone()    # IANA timezone, e.g. "America/New_York"
+email = get_user_email()    # user's email address
 ```
 
-This is useful for skills that need to address emails to
-"me" or query the user's own calendar.
-
-The user's timezone is available via:
-
-```
-tz = ion_read("/sys/user/timezone")
-```
-
-If it returns empty or "unknown", ask the user. Skills that
-deal with time or scheduling should use the user's actual
-timezone, not UTC.
+If `get_user_timezone()` returns empty, ask the user for their
+timezone. Skills that deal with time or scheduling must use the
+user's actual timezone, not UTC.
 
 ## Copying / renaming a skill
 
@@ -524,7 +507,9 @@ relative paths), so copying requires no path fixup:
 
 ## Scheduling
 
-Use the automation skill to schedule a skill as an automation.
+Publish the skill before scheduling. Automations should run
+against published versions, not drafts. Use the automation skill
+to schedule a skill as an automation.
 
 ## Further reading
 
