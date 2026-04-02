@@ -87,21 +87,15 @@ their SKILL.md frontmatter.
     `signup_url`, `instructions`
   - `config`: list of `{name, instructions?}`
   - `oauth_scopes`: list of Google OAuth scope URIs.
-    Supported URIs (full form required):
+    Supported URIs (prefix each with
+    https://www.googleapis.com/auth/):
     Calendar: calendar.events, calendar.events.readonly
     Gmail: gmail.send
-    Drive: drive.file
-    Sheets: spreadsheets, spreadsheets.readonly
-    Docs: documents, documents.readonly
-    Slides: presentations, presentations.readonly
-    (prefix each with https://www.googleapis.com/auth/)
-    drive.file is only needed for Auriga/ folder operations:
-    list_sheets, list_docs, list_presentations,
-    create_sheet, create_doc, create_presentation.
-    These list_*/create_* functions already scope to the user's
-    Auriga/ Drive folder — they take NO folder parameter.
-    ID-based operations (read_rows, append_rows, api()) and
-    calendar/gmail do NOT need drive.file.
+    Sheets/Docs/Slides: drive.file
+    drive.file covers ALL Sheets, Docs, and Slides API
+    operations — both folder ops (list_*, create_*) and
+    ID-based ops (read_rows, append_rows, api()).
+    Calendar and Gmail have their own scopes above.
   - `vfs`: list of `{path, access}` (read/write, `/*` globs).
     Skills automatically have read+write access to their own
     `/skills/user/{slug}/*` tree. `requires.vfs` is only for
