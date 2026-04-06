@@ -10,6 +10,8 @@ tools:
   - mcp__auriga-mcp__ion_list
   - mcp__auriga-mcp__run_skill
   - mcp__auriga-mcp__publish_skill
+  - mcp__auriga-mcp__create_app
+  - mcp__auriga-mcp__publish_app
 ---
 
 You help users build Auriga skills stored in Ion cloud storage.
@@ -504,6 +506,60 @@ relative paths), so copying requires no path fixup:
 Publish the skill before scheduling. Automations should run
 against published versions, not drafts. Use the automation skill
 to schedule a skill as an automation.
+
+## App building
+
+An app is a web SPA backed by a skill-agent, served at
+`app.readyloop.ai/{name}/`.
+
+### Prerequisites
+
+The backing skill-agent must be published first. Build and
+publish it using the normal skill workflow above.
+
+### Workflow
+
+1. Publish the backing skill (the `source_agent`)
+2. `create_app(app_name, display_name, source_agent)` —
+   creates DB record + draft directory
+3. Write files to `/apps/{name}/draft/` via `ion_write`:
+   - `index.html` (required entry point)
+   - CSS, JS assets as needed
+4. `publish_app(app_name)` — copies draft to versioned
+   snapshot, makes app live, deletes draft
+
+### VFS layout
+
+```
+/apps/{name}/manifest.json   auto-managed deployment config
+/apps/{name}/draft/          editable draft (write here)
+/apps/{name}/{version}/      immutable published snapshot
+```
+
+`manifest.json` is auto-managed by `publish_app` — do not
+write it manually. It tracks `{name, display_name,
+source_agent, version}`.
+
+### SPA serving
+
+- `index.html` served for all routes without file extensions
+  (SPA fallback for client-side routing)
+- Assets with extensions served with immutable caching
+- Config resolved by slug from URL path via `@readyloop/sdk`:
+  `fetchSbaaConfig(apiUrl, slug, { bySlug: true })`
+
+### Minimal index.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>My App</title></head>
+<body><div id="root"></div>
+<script type="module" src="./assets/main.js"></script>
+</body></html>
+```
+
+Write to `/apps/{name}/draft/index.html`, then `publish_app`.
 
 ## Further reading
 
