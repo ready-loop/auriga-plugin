@@ -545,19 +545,115 @@ source_agent, version}`.
 - `index.html` served for all routes without file extensions
   (SPA fallback for client-side routing)
 - Assets with extensions served with immutable caching
-- Config resolved by slug from URL path via `@readyloop/sdk`:
-  `fetchSbaaConfig(apiUrl, slug, { bySlug: true })`
+- SDK CDN: `https://cdn.readyloop.ai/latest/readyloop.js`
+  (IIFE, exposes `window.ReadyLoop`)
+- Styles: `https://cdn.readyloop.ai/latest/styles.css`
+- API URL: detect from hostname — staging
+  `app.readyloop-staging.dev` → `https://auriga.readyloop-staging.dev`,
+  prod `app.readyloop.ai` → `https://auriga.readyloop.ai`
 
-### Minimal index.html
+### Working index.html template
+
+This is a complete, working single-file app with login, chat
+streaming, and markdown rendering. Use it as the starting
+point for all apps. Customize the title, styles, and empty
+state to match the app's purpose.
 
 ```html
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>My App</title></head>
-<body><div id="root"></div>
-<script type="module" src="./assets/main.js"></script>
-</body></html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{APP_TITLE}</title>
+<link rel="stylesheet" href="https://cdn.readyloop.ai/latest/styles.css">
+<script src="https://cdn.readyloop.ai/latest/readyloop.js"></script>
+<style>
+  *{margin:0;box-sizing:border-box}
+  body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#e0e0e0;height:100vh;display:flex;flex-direction:column}
+  #login{display:flex;align-items:center;justify-content:center;height:100vh}
+  #login button{padding:12px 24px;font-size:16px;border:none;border-radius:8px;background:#d6f5ee;color:#1a1a2e;cursor:pointer}
+  #chat-container{display:none;flex-direction:column;height:100vh;max-width:800px;margin:0 auto;width:100%;padding:16px}
+  #messages{flex:1;overflow-y:auto;padding:8px 0}
+  .msg{margin:8px 0;padding:12px;border-radius:8px;white-space:pre-wrap;word-wrap:break-word}
+  .msg.user{background:#2a2a4a;margin-left:20%}
+  .msg.assistant{background:#1e3a2f}
+  .msg.status{color:#888;font-style:italic;font-size:0.9em}
+  #input-row{display:flex;gap:8px;padding:8px 0}
+  #input-row input{flex:1;padding:12px;border:1px solid #333;border-radius:8px;background:#2a2a3e;color:#e0e0e0;font-size:16px}
+  #input-row button{padding:12px 20px;border:none;border-radius:8px;background:#d6f5ee;color:#1a1a2e;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="login"><button onclick="login()">Sign in with Google</button></div>
+<div id="chat-container">
+  <div id="messages"></div>
+  <div id="input-row">
+    <input id="msg" placeholder="Type a message..." onkeydown="if(event.key==='Enter')send()">
+    <button onclick="send()">Send</button>
+  </div>
+</div>
+<script>
+const RL = window.ReadyLoop;
+const host = location.hostname;
+const apiUrl = host.includes('staging') ? 'https://auriga.readyloop-staging.dev' : 'https://auriga.readyloop.ai';
+const slug = location.pathname.split('/').filter(Boolean)[0];
+let client, convId;
+
+async function boot() {
+  const cfg = await RL.fetchSbaaConfig(apiUrl, slug, {bySlug:true});
+  client = new RL.ReadyLoopClient({apiUrl, appKey: cfg.app_key});
+  const saved = localStorage.getItem('rl-auth-'+slug);
+  if (saved) {
+    const auth = JSON.parse(saved);
+    client.setAuth(auth);
+    if (client.isAuthenticated()) return showChat();
+  }
+  const params = new URLSearchParams(location.search);
+  if (params.has('code')) {
+    const auth = await client.exchangeCode(params.get('code'));
+    localStorage.setItem('rl-auth-'+slug, JSON.stringify(auth));
+    client.setAuth(auth);
+    history.replaceState({}, '', location.pathname);
+    return showChat();
+  }
+}
+function login() { location.href = client.getLoginUrl(location.origin + '/' + slug + '/'); }
+function showChat() {
+  document.getElementById('login').style.display='none';
+  const cc = document.getElementById('chat-container');
+  cc.style.display='flex';
+}
+async function send() {
+  const inp = document.getElementById('msg');
+  const text = inp.value.trim(); if (!text) return;
+  inp.value = '';
+  addMsg(text, 'user');
+  if (!convId) convId = await client.createConversation();
+  const el = addMsg('', 'assistant');
+  for await (const ev of client.sendMessage(convId, {text})) {
+    el.textContent = ev.text;
+  }
+}
+function addMsg(text, cls) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + cls;
+  el.textContent = text;
+  const m = document.getElementById('messages');
+  m.appendChild(el);
+  m.scrollTop = m.scrollHeight;
+  return el;
+}
+boot();
+</script>
+</body>
+</html>
 ```
+
+Replace `{APP_TITLE}` with the app's display name. Customize
+the empty state, colors, and placeholder to match the app's
+purpose. For richer UIs, split JS/CSS into separate files
+under `/apps/{name}/draft/assets/`.
 
 Write to `/apps/{name}/draft/index.html`, then `publish_app`.
 
