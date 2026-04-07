@@ -512,6 +512,10 @@ to schedule a skill as an automation.
 An app is a web SPA backed by a skill-agent, served at
 `app.readyloop.ai/{name}/`.
 
+All apps use React + Vite + the `ReadyLoopApp` shell component.
+Use Mantine components and Tabler icons for all UI. Never use
+raw HTML buttons or custom icon SVGs.
+
 ### Prerequisites
 
 The backing skill-agent must be published first. Build and
@@ -522,42 +526,30 @@ publish it using the normal skill workflow above.
 1. Publish the backing skill (the `source_agent`)
 2. `create_app(app_name, display_name, source_agent)` —
    creates DB record + draft directory
-3. Write files to `/apps/{name}/draft/` via `ion_write`:
-   - `index.html` (required entry point)
-   - CSS, JS assets as needed
+3. Write files to `/apps/{name}/draft/` via `ion_write`
 4. `publish_app(app_name)` — copies draft to versioned
    snapshot, makes app live, deletes draft
 
 ### VFS layout
 
 ```
-/apps/{name}/manifest.json   auto-managed deployment config
+/apps/{name}/manifest.json   auto-managed (do not write)
 /apps/{name}/draft/          editable draft (write here)
 /apps/{name}/{version}/      immutable published snapshot
 ```
 
-`manifest.json` is auto-managed by `publish_app` — do not
-write it manually. It tracks `{name, display_name,
-source_agent, version}`.
-
 ### SPA serving
 
 - `index.html` served for all routes without file extensions
-  (SPA fallback for client-side routing)
 - Assets with extensions served with immutable caching
-- SDK CDN: `https://cdn.readyloop.ai/latest/readyloop.js`
-  (IIFE, exposes `window.ReadyLoop`)
-- Styles: `https://cdn.readyloop.ai/latest/styles.css`
-- API URL: detect from hostname — staging
-  `app.readyloop-staging.dev` → `https://auriga.readyloop-staging.dev`,
+- API URL: detect from hostname —
   prod `app.readyloop.ai` → `https://auriga.readyloop.ai`
 
-### Working index.html template
+### Required files
 
-This is a complete, working single-file app with login, chat
-streaming, and markdown rendering. Use it as the starting
-point for all apps. Customize the title, styles, and empty
-state to match the app's purpose.
+Write all files to `/apps/{name}/draft/` via `ion_write`.
+
+**index.html** — minimal HTML shell:
 
 ```html
 <!DOCTYPE html>
@@ -566,96 +558,106 @@ state to match the app's purpose.
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{APP_TITLE}</title>
-<link rel="stylesheet" href="https://cdn.readyloop.ai/latest/styles.css">
-<script src="https://cdn.readyloop.ai/latest/readyloop.js"></script>
-<style>
-  *{margin:0;box-sizing:border-box}
-  body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#e0e0e0;height:100vh;display:flex;flex-direction:column}
-  #login{display:flex;align-items:center;justify-content:center;height:100vh}
-  #login button{padding:12px 24px;font-size:16px;border:none;border-radius:8px;background:#d6f5ee;color:#1a1a2e;cursor:pointer}
-  #chat-container{display:none;flex-direction:column;height:100vh;max-width:800px;margin:0 auto;width:100%;padding:16px}
-  #messages{flex:1;overflow-y:auto;padding:8px 0}
-  .msg{margin:8px 0;padding:12px;border-radius:8px;white-space:pre-wrap;word-wrap:break-word}
-  .msg.user{background:#2a2a4a;margin-left:20%}
-  .msg.assistant{background:#1e3a2f}
-  .msg.status{color:#888;font-style:italic;font-size:0.9em}
-  #input-row{display:flex;gap:8px;padding:8px 0}
-  #input-row input{flex:1;padding:12px;border:1px solid #333;border-radius:8px;background:#2a2a3e;color:#e0e0e0;font-size:16px}
-  #input-row button{padding:12px 20px;border:none;border-radius:8px;background:#d6f5ee;color:#1a1a2e;cursor:pointer}
-</style>
 </head>
-<body>
-<div id="login"><button onclick="login()">Sign in with Google</button></div>
-<div id="chat-container">
-  <div id="messages"></div>
-  <div id="input-row">
-    <input id="msg" placeholder="Type a message..." onkeydown="if(event.key==='Enter')send()">
-    <button onclick="send()">Send</button>
-  </div>
-</div>
-<script>
-const RL = window.ReadyLoop;
-const host = location.hostname;
-const apiUrl = host.includes('staging') ? 'https://auriga.readyloop-staging.dev' : 'https://auriga.readyloop.ai';
-const slug = location.pathname.split('/').filter(Boolean)[0];
-let client, convId;
-
-async function boot() {
-  const cfg = await RL.fetchSbaaConfig(apiUrl, slug, {bySlug:true});
-  client = new RL.ReadyLoopClient({apiUrl, appKey: cfg.app_key});
-  const saved = localStorage.getItem('rl-auth-'+slug);
-  if (saved) {
-    const auth = JSON.parse(saved);
-    client.setAuth(auth);
-    if (client.isAuthenticated()) return showChat();
-  }
-  const params = new URLSearchParams(location.search);
-  if (params.has('code')) {
-    const auth = await client.exchangeCode(params.get('code'));
-    localStorage.setItem('rl-auth-'+slug, JSON.stringify(auth));
-    client.setAuth(auth);
-    history.replaceState({}, '', location.pathname);
-    return showChat();
-  }
-}
-function login() { location.href = client.getLoginUrl(location.origin + '/' + slug + '/'); }
-function showChat() {
-  document.getElementById('login').style.display='none';
-  const cc = document.getElementById('chat-container');
-  cc.style.display='flex';
-}
-async function send() {
-  const inp = document.getElementById('msg');
-  const text = inp.value.trim(); if (!text) return;
-  inp.value = '';
-  addMsg(text, 'user');
-  if (!convId) convId = await client.createConversation();
-  const el = addMsg('', 'assistant');
-  for await (const ev of client.sendMessage(convId, {text})) {
-    el.textContent = ev.text;
-  }
-}
-function addMsg(text, cls) {
-  const el = document.createElement('div');
-  el.className = 'msg ' + cls;
-  el.textContent = text;
-  const m = document.getElementById('messages');
-  m.appendChild(el);
-  m.scrollTop = m.scrollHeight;
-  return el;
-}
-boot();
-</script>
+<body><div id="root"></div>
+<script type="module" src="./src/main.tsx"></script>
 </body>
 </html>
 ```
 
-Replace `{APP_TITLE}` with the app's display name. Customize
-the empty state, colors, and placeholder to match the app's
-purpose. For richer UIs, split JS/CSS into separate files
-under `/apps/{name}/draft/assets/`.
+**package.json** — dependencies:
 
-Write to `/apps/{name}/draft/index.html`, then `publish_app`.
+```json
+{
+  "type": "module",
+  "dependencies": {
+    "@readyloop/sdk": "latest",
+    "@assistant-ui/react": "^0.10.20",
+    "@mantine/core": "^7.14.0",
+    "@mantine/hooks": "^7.14.0",
+    "@tabler/icons-react": "^3.21.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.1.0",
+    "zustand": "^5.0.0"
+  }
+}
+```
+
+**vite.config.ts**:
+
+```ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+export default defineConfig({ plugins: [react()] });
+```
+
+**src/main.tsx** — boot sequence:
+
+```tsx
+import { StrictMode, useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { ReadyLoopClient, fetchSbaaConfig } from '@readyloop/sdk';
+import '@readyloop/sdk/styles.css';
+import { App } from './App';
+
+function Root() {
+  const [client, setClient] = useState<ReadyLoopClient|null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let c = false;
+    (async () => {
+      const host = location.hostname;
+      const apiUrl = host.includes('readyloop')
+        ? 'https://auriga.readyloop.ai' : '';
+      const slug = location.pathname.split('/').filter(Boolean)[0];
+      if (!slug) { setError('No app slug'); return; }
+      const cfg = await fetchSbaaConfig(apiUrl, slug, {bySlug:true});
+      if (!c) setClient(new ReadyLoopClient({apiUrl, appKey: cfg.app_key}));
+    })().catch(e => { if (!c) setError(String(e)); });
+    return () => { c = true; };
+  }, []);
+  if (error) return <div style={{padding:32,color:'red'}}>{error}</div>;
+  if (!client) return <div style={{padding:32,color:'#888'}}>Loading...</div>;
+  return <App client={client} />;
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode><Root /></StrictMode>
+);
+```
+
+**src/App.tsx** — uses `ReadyLoopApp` shell:
+
+```tsx
+import { ReadyLoopApp, ReadyLoopChat } from '@readyloop/sdk/react';
+import { IconMessage } from '@tabler/icons-react';
+import type { ReadyLoopClient } from '@readyloop/sdk';
+
+export function App({ client }: { client: ReadyLoopClient }) {
+  return (
+    <ReadyLoopApp
+      client={client}
+      appName="{APP_NAME}"
+      appTagline="{APP_TAGLINE}"
+      navItems={[{ icon: IconMessage, label: 'Chat', href: '/' }]}
+    >
+      <ReadyLoopChat client={client} />
+    </ReadyLoopApp>
+  );
+}
+```
+
+`ReadyLoopApp` provides: login, subscription gate, collapsible
+sidebar (desktop), bottom tabs (mobile), Settings (About +
+Billing), and Logout. SBAAs control CSS via `--rl-*` variable
+overrides and Mantine theme overrides.
+
+Replace `{APP_TITLE}`, `{APP_NAME}`, `{APP_TAGLINE}` with the
+app's display name and tagline.
+
+Write all files, then `publish_app`.
 
 ## Further reading
 
