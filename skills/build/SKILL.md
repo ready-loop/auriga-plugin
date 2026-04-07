@@ -565,13 +565,13 @@ Write all files to `/apps/{name}/draft/` via `ion_write`.
 </html>
 ```
 
-**package.json** — dependencies:
+**package.json** — dependencies (SDK installed from CDN tarball):
 
 ```json
 {
   "type": "module",
   "dependencies": {
-    "@readyloop/sdk": "latest",
+    "@readyloop/sdk": "https://cdn.readyloop.ai/v0.1.3/readyloop-sdk-0.1.3.tgz",
     "@assistant-ui/react": "^0.10.20",
     "@mantine/core": "^7.14.0",
     "@mantine/hooks": "^7.14.0",
@@ -581,6 +581,10 @@ Write all files to `/apps/{name}/draft/` via `ion_write`.
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.1.0",
     "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^6.0.0"
   }
 }
 ```
