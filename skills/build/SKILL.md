@@ -571,7 +571,7 @@ Write all files to `/apps/{name}/draft/` via `ion_write`.
 {
   "type": "module",
   "dependencies": {
-    "@readyloop/sdk": "https://cdn.readyloop.ai/v0.1.3/readyloop-sdk-0.1.3.tgz",
+    "@readyloop/sdk": "https://cdn.readyloop.ai/v0.1.4/readyloop-sdk-0.1.4.tgz",
     "@assistant-ui/react": "^0.10.20",
     "@mantine/core": "^7.14.0",
     "@mantine/hooks": "^7.14.0",
@@ -597,66 +597,42 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({ plugins: [react()] });
 ```
 
-**src/main.tsx** — boot sequence:
+**src/main.tsx** — mounts the app (all boot logic is in the SDK):
 
 ```tsx
-import { StrictMode, useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { ReadyLoopClient, fetchSbaaConfig } from '@readyloop/sdk';
+import { mountSbaaApp } from '@readyloop/sdk/react';
 import '@readyloop/sdk/styles.css';
-import { App } from './App';
+import './theme.css';
 
-function Root() {
-  const [client, setClient] = useState<ReadyLoopClient|null>(null);
-  const [error, setError] = useState('');
-  useEffect(() => {
-    let c = false;
-    (async () => {
-      const host = location.hostname;
-      const apiUrl = host.includes('readyloop')
-        ? 'https://auriga.readyloop.ai' : '';
-      const slug = location.pathname.split('/').filter(Boolean)[0];
-      if (!slug) { setError('No app slug'); return; }
-      const cfg = await fetchSbaaConfig(apiUrl, slug, {bySlug:true});
-      if (!c) setClient(new ReadyLoopClient({apiUrl, appKey: cfg.app_key}));
-    })().catch(e => { if (!c) setError(String(e)); });
-    return () => { c = true; };
-  }, []);
-  if (error) return <div style={{padding:32,color:'red'}}>{error}</div>;
-  if (!client) return <div style={{padding:32,color:'#888'}}>Loading...</div>;
-  return <App client={client} />;
-}
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode><Root /></StrictMode>
-);
+mountSbaaApp({
+  appName: '{APP_NAME}',
+  appTagline: '{APP_TAGLINE}',
+});
 ```
 
-**src/App.tsx** — uses `ReadyLoopApp` shell:
+**src/theme.css** — CSS variable overrides for branding:
 
-```tsx
-import { ReadyLoopApp, ReadyLoopChat } from '@readyloop/sdk/react';
-import { IconMessage } from '@tabler/icons-react';
-import type { ReadyLoopClient } from '@readyloop/sdk';
-
-export function App({ client }: { client: ReadyLoopClient }) {
-  return (
-    <ReadyLoopApp
-      client={client}
-      appName="{APP_NAME}"
-      appTagline="{APP_TAGLINE}"
-      navItems={[{ icon: IconMessage, label: 'Chat', href: '/' }]}
-    >
-      <ReadyLoopChat client={client} />
-    </ReadyLoopApp>
-  );
+```css
+:root {
+  --rl-bg: #0f172a;
+  --rl-bg-secondary: #1e293b;
+  --rl-fg: #f1f5f9;
+  --rl-fg-muted: #94a3b8;
+  --rl-primary: #22d3ee;
+  --rl-primary-fg: #0f172a;
+  --rl-border: #334155;
 }
 ```
 
-`ReadyLoopApp` provides: login, subscription gate, collapsible
-sidebar (desktop), bottom tabs (mobile), Settings (About +
-Billing), and Logout. SBAAs control CSS via `--rl-*` variable
-overrides and Mantine theme overrides.
+`mountSbaaApp` handles: API URL detection, slug extraction,
+config fetching, client creation, login, subscription gate,
+sidebar, settings, and the default ReadyLoopChat view.
+
+Optional `mountSbaaApp` props: `composerPlaceholder`,
+`emptyState`, `renderCard`, `enableFilePicker`, `navItems`,
+`theme`, `colorScheme`, `skipSubscriptionCheck`, `logo`.
+Pass `children: (client) => <Custom />` to replace the
+default chat view.
 
 Replace `{APP_TITLE}`, `{APP_NAME}`, `{APP_TAGLINE}` with the
 app's display name and tagline.
