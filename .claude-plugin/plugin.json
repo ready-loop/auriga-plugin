@@ -1,7 +1,7 @@
 {
   "name": "auriga",
   "description": "Build and manage Auriga skills and automations",
-  "version": "1.0.40",
+  "version": "1.0.46",
   "author": {
     "name": "ReadyLoop"
   }

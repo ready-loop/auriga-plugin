@@ -100,4 +100,4 @@ event timeline, and debug artifacts.
 
 ## Further reading
 
-Read `auriga://docs/automations` for the full guide.
+Read `ion_read("/sys/docs/automations")` for the full guide.

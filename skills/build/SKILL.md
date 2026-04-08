@@ -82,6 +82,10 @@ their SKILL.md frontmatter.
 
 ### Optional frontmatter
 
+- `license`: `"Proprietary"` for private/closed skills, or an
+  SPDX identifier (e.g. `"MIT"`, `"Apache-2.0"`) for open
+  source. Use `"Custom"` only if neither fits. When set,
+  include a LICENSE file in the skill root.
 - `metadata`: `sort_order` (int), `icon` (emoji)
 - `requires`:
   - `network`: list of base URLs the skill can reach
@@ -130,6 +134,7 @@ required keys. Missing keys: direct to Settings > API Keys.
 schema_version: "1.0.0"
 name: weather-lookup
 description: Look up weather forecasts
+license: MIT
 requires:
   network:
     - https://api.openweathermap.org
@@ -171,10 +176,29 @@ Persistent data path: `/skill/data/{filename}` inside scripts
 - Implicitly writable (no `requires.vfs` needed)
 - NEVER use bare paths like `/data/foo` — will ENOENT
 
-Scripts access data via standard Python file operations
-(`open`, `read`, `write`) using `/skill/data/...` paths.
-The `/skill` mount is bound to the skill's VFS subtree
-automatically.
+**Reading** from SKILL.md: use `read_file` (a runtime tool).
+**Writing** from SKILL.md: there is NO `write_file` tool. All
+writes go through a script via `exec_file`. Create the script
+as part of the build. The script uses standard Python file I/O
+on `/skill/data/...`:
+
+```python
+# scripts/save_data.py
+import json, sys
+from auriga.ion.output import output_json
+DATA = "/skill/data/items.json"
+data = json.loads(sys.argv[1])
+with open(DATA, "w") as f:
+    json.dump(data, f)
+output_json({"saved": True})
+```
+
+SKILL.md invocation:
+```
+exec_file("scripts/save_data.py", ["<json>"],
+          skill_name="{SKILL_NAME}",
+          user_display_hint="Saving...")
+```
 
 ## Script development
 
@@ -341,12 +365,59 @@ packages.
 
 - `auriga.ion.output` — `output_json`, `output_error`
 - `auriga.ion.vfs` — VFS helpers, `get_secret`
+- `auriga.ion.cards` — `build_file_download_card`
 - `auriga.ion.google` — `service()`
 - `auriga.ion.google.{calendar,gmail,sheets,drive,docs,slides}`
 
 Read API docs: `ion_read("/sys/docs/ion/{module}")` or
 `ion_read("/sys/docs/ion/google/{service}")`. Always check
 signatures before using convenience functions.
+
+### Producing downloadable files
+
+Scripts write output files to `/chat/files/` and present
+them as download cards. The runtime normalises sandbox paths
+to absolute Ion URLs before sending to clients.
+
+```python
+#!/usr/bin/env python3
+import sys
+from auriga.ion.output import output_json
+from auriga.ion.cards import build_file_download_card
+
+input_path = sys.argv[1]
+with open(input_path) as f:
+    content = f.read()
+
+# ... process content ...
+
+output_path = "/chat/files/report.html"
+with open(output_path, "w") as f:
+    f.write(html_content)
+
+card = build_file_download_card(
+    card_id="download-report",
+    title="Your Report",
+    files=[{
+        "name": "report.html",
+        "vfs_path": output_path,
+        "mime_type": "text/html",
+    }],
+)
+output_json({"text": "Report ready.", "cards": [card]})
+```
+
+SKILL.md invocation:
+```
+exec_file("scripts/convert.py",
+          ["/chat/files/uploads/input.md"],
+          skill_name="{SKILL_NAME}",
+          user_display_hint="Converting...")
+```
+
+`vfs_path` must start with `/chat/files/`. Multiple files
+per card are supported. `mime_type` is inferred from the
+extension if omitted. `size` (bytes) is optional.
 
 ## Researching APIs
 
@@ -362,6 +433,7 @@ endpoints, and response format.
 schema_version: "1.0.0"
 name: stock-price
 description: Look up current stock prices
+license: MIT
 requires:
   network:
     - https://query1.finance.yahoo.com
@@ -510,11 +582,13 @@ to schedule a skill as an automation.
 ## App building
 
 An app is a web SPA backed by a skill-agent, served at
-`app.readyloop.ai/{name}/`.
+`app.readyloop.ai/{name}/` (staging: `app.readyloop-staging.dev/{name}/`).
 
-All apps use React + Vite + the `ReadyLoopApp` shell component.
-Use Mantine components and Tabler icons for all UI. Never use
-raw HTML buttons or custom icon SVGs.
+Apps use the platform's web client (clients/web) as their
+frontend. No custom React code, no Vite build, no npm
+dependencies. The app's display name, tagline, and theme
+are configured via the API — the platform UI adapts
+automatically.
 
 ### Prerequisites
 
@@ -524,122 +598,74 @@ publish it using the normal skill workflow above.
 ### Workflow
 
 1. Publish the backing skill (the `source_agent`)
-2. `create_app(app_name, display_name, source_agent)` —
-   creates DB record + draft directory
-3. Write files to `/apps/{name}/draft/` via `ion_write`
-4. `publish_app(app_name)` — copies draft to versioned
-   snapshot, makes app live, deletes draft
+2. `create_app(app_name, display_name, source_agent,
+   description, app_tagline)` — creates DB record
+3. `publish_app(app_name)` — makes app live
 
-### VFS layout
+That's it. The app is immediately available at
+`https://app.readyloop-staging.dev/{app_name}/`.
 
-```
-/apps/{name}/manifest.json   auto-managed (do not write)
-/apps/{name}/draft/          editable draft (write here)
-/apps/{name}/{version}/      immutable published snapshot
-```
+### What the platform provides
 
-### SPA serving
+- Login screen with the app's display name and tagline
+- Chat interface connected to the app's backing skill
+- Simplified sidebar (Chat + Settings only)
+- Billing/subscription management
+- Custom CSS variable theming (via `custom_css_vars`)
 
-- `index.html` served for all routes without file extensions
-- Assets with extensions served with immutable caching
-- API URL: detect from hostname —
-  prod `app.readyloop.ai` → `https://auriga.readyloop.ai`
+### Custom theming (optional)
 
-### Required files
+To customize the app's color scheme, pass `custom_css_vars`
+when creating the app. These override the default --rl-*
+CSS variables:
 
-Write all files to `/apps/{name}/draft/` via `ion_write`.
-
-**index.html** — minimal HTML shell:
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{APP_TITLE}</title>
-</head>
-<body><div id="root"></div>
-<script type="module" src="./src/main.tsx"></script>
-</body>
-</html>
-```
-
-**package.json** — dependencies (SDK installed from CDN tarball):
-
-```json
-{
-  "type": "module",
-  "dependencies": {
-    "@readyloop/sdk": "https://cdn.readyloop.ai/v0.1.4/readyloop-sdk-0.1.4.tgz",
-    "@assistant-ui/react": "^0.10.20",
-    "@mantine/core": "^7.14.0",
-    "@mantine/hooks": "^7.14.0",
-    "@tabler/icons-react": "^3.21.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.1.0",
-    "zustand": "^5.0.0"
+```python
+create_app(
+  app_name="my-app",
+  display_name="My App",
+  source_agent="my-skill-agent",
+  app_tagline="AI-powered analysis",
+  custom_css_vars={
+    "--rl-bg": "#0f172a",
+    "--rl-bg-secondary": "#1e293b",
+    "--rl-primary": "#22d3ee",
+    "--rl-primary-fg": "#0f172a",
   },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.0.0",
-    "vite": "^6.0.0"
-  }
-}
+)
 ```
 
-**vite.config.ts**:
+No files need to be written to the VFS. Do NOT write
+index.html, package.json, vite.config.ts, or any frontend
+code — the platform handles everything.
 
-```ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-export default defineConfig({ plugins: [react()] });
-```
+## Licensing
 
-**src/main.tsx** — mounts the app (all boot logic is in the SDK):
+When creating a new skill, ask the user what license they want.
+NEVER generate license text from memory — always use canonical
+texts from sysfs.
 
-```tsx
-import { mountSbaaApp } from '@readyloop/sdk/react';
-import '@readyloop/sdk/styles.css';
-import './theme.css';
+**For private/closed skills** (most common):
+1. Read template: `ion_read("/sys/licenses/Proprietary")`
+2. Replace `[year]` with current year and `[holder]` with
+   user's name (from `ion_read("/sys/user/display_name")`)
+3. Write to `/skills/user/{name}/draft/LICENSE`
+4. Set `license: "Proprietary"` in SKILL.md frontmatter
 
-mountSbaaApp({
-  appName: '{APP_NAME}',
-  appTagline: '{APP_TAGLINE}',
-});
-```
+**For open-source skills**:
+1. Read canonical text: `ion_read("/sys/licenses/MIT")`
+   (replace MIT with the chosen SPDX identifier)
+2. Write to `/skills/user/{name}/draft/LICENSE`
+3. Set `license: "MIT"` in SKILL.md frontmatter
 
-**src/theme.css** — CSS variable overrides for branding:
+Available licenses: `ion_read("/sys/licenses/")` to list all.
+For `"Custom"`, ask the user to provide their own license text
+and write it to the LICENSE file.
 
-```css
-:root {
-  --rl-bg: #0f172a;
-  --rl-bg-secondary: #1e293b;
-  --rl-fg: #f1f5f9;
-  --rl-fg-muted: #94a3b8;
-  --rl-primary: #22d3ee;
-  --rl-primary-fg: #0f172a;
-  --rl-border: #334155;
-}
-```
-
-`mountSbaaApp` handles: API URL detection, slug extraction,
-config fetching, client creation, login, subscription gate,
-sidebar, settings, and the default ReadyLoopChat view.
-
-Optional `mountSbaaApp` props: `composerPlaceholder`,
-`emptyState`, `renderCard`, `enableFilePicker`, `navItems`,
-`theme`, `colorScheme`, `skipSubscriptionCheck`, `logo`.
-Pass `children: (client) => <Custom />` to replace the
-default chat view.
-
-Replace `{APP_TITLE}`, `{APP_NAME}`, `{APP_TAGLINE}` with the
-app's display name and tagline.
-
-Write all files, then `publish_app`.
+Publishing validates that the `license` field and LICENSE file
+are consistent. For SPDX IDs, the LICENSE file must match the
+canonical text.
 
 ## Further reading
 
-- `auriga://docs/guide` — Ion SDK overview
-- `auriga://docs/automations` — scheduling skills
+- `ion_read("/sys/docs/guide")` — Ion SDK overview
+- `ion_read("/sys/docs/automations")` — scheduling skills
