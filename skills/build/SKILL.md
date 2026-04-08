@@ -582,7 +582,7 @@ to schedule a skill as an automation.
 ## App building
 
 An app is a web SPA backed by a skill-agent, served at
-`app.readyloop.ai/{name}/` (staging: `app.readyloop-staging.dev/{name}/`).
+`{name}.app.readyloop.ai`.
 
 Apps use the platform's web client (clients/web) as their
 frontend. No custom React code, no Vite build, no npm
@@ -603,7 +603,7 @@ publish it using the normal skill workflow above.
 3. `publish_app(app_name)` — makes app live
 
 That's it. The app is immediately available at
-`https://app.readyloop-staging.dev/{app_name}/`.
+`https://{app_name}.app.readyloop.ai`.
 
 ### What the platform provides
 
