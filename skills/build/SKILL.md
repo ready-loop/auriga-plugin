@@ -11,7 +11,6 @@ tools:
   - mcp__auriga-mcp__run_skill
   - mcp__auriga-mcp__publish_skill
   - mcp__auriga-mcp__create_app
-  - mcp__auriga-mcp__publish_app
 ---
 
 You help users build Auriga skills stored in Ion cloud storage.
@@ -599,11 +598,14 @@ publish it using the normal skill workflow above.
 
 1. Publish the backing skill (the `source_agent`)
 2. `create_app(app_name, display_name, source_agent,
-   description, app_tagline)` — creates DB record
-3. `publish_app(app_name)` — makes app live
+   description, app_tagline)` — app is immediately live
 
-That's it. The app is immediately available at
-`https://{app_name}.app.readyloop.ai`.
+The app is available at
+`https://{app_name}.app.readyloop.ai/`.
+
+To update an existing app (change theme, tagline, etc.),
+call `create_app` again with the same `app_name`. All
+fields are replaced; the slug and app_key are preserved.
 
 ### What the platform provides
 
@@ -613,30 +615,68 @@ That's it. The app is immediately available at
 - Billing/subscription management
 - Custom CSS variable theming (via `custom_css_vars`)
 
+Do NOT write index.html, package.json, vite.config.ts, or
+any frontend code — the platform handles everything.
+
 ### Custom theming (optional)
 
-To customize the app's color scheme, pass `custom_css_vars`
-when creating the app. These override the default --rl-*
-CSS variables:
+Pass `custom_css_vars` to override the default CSS variables.
+These are injected into `:root` at runtime.
 
+Overridable variables (grouped by function):
+
+Backgrounds: `--rl-bg`, `--rl-bg-secondary`, `--rl-bg-muted`
+Foregrounds: `--rl-fg`, `--rl-fg-muted`, `--rl-fg-subtle`
+Primary action: `--rl-primary`, `--rl-primary-fg`
+Accent: `--rl-accent`, `--rl-accent-fg`
+Borders: `--rl-border`, `--rl-border-strong`
+Danger: `--rl-danger`
+Other: `--rl-shadow-card`, `--rl-radius`, `--rl-radius-lg`
+
+**Contrast rules** (WCAG AA):
+- `--rl-fg` must contrast with `--rl-bg` (4.5:1 min)
+- `--rl-primary-fg` must contrast with `--rl-primary`
+- `--rl-accent-fg` must contrast with `--rl-accent`
+- `--rl-fg-muted` must be readable against `--rl-bg` (3:1)
+- `--rl-border` must be visible against `--rl-bg`
+- Rule: if bg is light, use dark fg values and vice versa.
+  Always set BOTH sides of a contrast pair.
+
+Dark theme example:
 ```python
 create_app(
   app_name="my-app",
   display_name="My App",
   source_agent="my-skill-agent",
-  app_tagline="AI-powered analysis",
   custom_css_vars={
     "--rl-bg": "#0f172a",
     "--rl-bg-secondary": "#1e293b",
+    "--rl-fg": "#e2e8f0",
+    "--rl-fg-muted": "#94a3b8",
     "--rl-primary": "#22d3ee",
     "--rl-primary-fg": "#0f172a",
+    "--rl-border": "#334155",
   },
 )
 ```
 
-No files need to be written to the VFS. Do NOT write
-index.html, package.json, vite.config.ts, or any frontend
-code — the platform handles everything.
+Light theme example:
+```python
+create_app(
+  app_name="my-app",
+  display_name="My App",
+  source_agent="my-skill-agent",
+  custom_css_vars={
+    "--rl-bg": "#fef9ef",
+    "--rl-bg-secondary": "#fdf3dc",
+    "--rl-fg": "#3d2e1a",
+    "--rl-fg-muted": "#7a6a55",
+    "--rl-primary": "#d4a017",
+    "--rl-primary-fg": "#ffffff",
+    "--rl-border": "#e8d9b8",
+  },
+)
+```
 
 ## Licensing
 
