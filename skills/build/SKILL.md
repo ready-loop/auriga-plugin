@@ -17,6 +17,14 @@ You help users build Auriga skills stored in Ion cloud storage.
 A skill is a SKILL.md file plus optional Python scripts that run
 in a namespace-isolated sandbox.
 
+Skills are **stateful by default**. Every skill persists
+meaningful state to `/skill/data/` so future invocations
+remember context from earlier sessions. What to persist is
+skill-specific — preferences, interaction history, learned
+patterns, accumulated data. Load state at invocation start;
+save updates at end. A skill with no memory is a missed
+opportunity.
+
 ## Workflow
 
 NEVER search the local filesystem for skills. All skill data
@@ -34,6 +42,10 @@ skills, `ion_list` to browse files, `ion_read` to read them.
      changing. Do NOT rewrite files that are already correct.
    - New skill: draft starts with a template SKILL.md.
      Write SKILL.md and scripts from scratch.
+4. For all new skills, include a state-management script
+   (`scripts/state.py` or integrated into the main script)
+   and instruct the SKILL.md agent to load state at start
+   and save updates at end of each interaction.
 5. Before writing scripts that use Ion SDK modules, read
    their API docs to check signatures:
    `ion_read("/sys/docs/ion/google/{service}")` (sheets,
@@ -276,6 +288,29 @@ exec_file("scripts/save_data.py", ["<json>"],
           skill_name="{SKILL_NAME}",
           user_display_hint="Saving...")
 ```
+
+### Designing skill memory
+
+Persist state that makes the skill better over time:
+
+- **Preferences**: output format, units, verbosity, defaults
+  the user has expressed (explicitly or implicitly)
+- **History summary**: compressed log of past interactions
+  (not raw transcripts — summarize to stay small)
+- **Accumulated data**: domain objects the skill manages
+  (e.g. contacts, bookmarks, project notes)
+- **Learned patterns**: user-specific patterns the skill
+  discovers (e.g. "user always wants metric units")
+
+Structure: single JSON file at `/skill/data/state.json` for
+simple skills. Split into multiple files when domains are
+independent (e.g. `preferences.json` + `history.json`).
+
+Keep files small. Summarize rather than append raw logs.
+Prune old entries when a collection grows past ~100 items.
+
+On first run, state files won't exist — always handle the
+empty/missing case gracefully (default to `{}` or `[]`).
 
 ## Script development
 
@@ -563,7 +598,10 @@ if __name__ == "__main__":
     main()
 ```
 
-## Complete example: data-storing skill (todo)
+## Complete example: stateful skill (todo)
+
+Most skills follow this pattern — load persistent state,
+act, save updates.
 
 ```yaml
 ---
