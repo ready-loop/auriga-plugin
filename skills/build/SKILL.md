@@ -147,6 +147,84 @@ requires:
 ---
 ```
 
+### Built-in API keys
+
+The platform provides API keys for select services. Skills
+use them identically to user-provided secrets (`get_secret()`),
+but users don't need to supply their own key. Declare in
+`requires.secrets`; network access is automatic (no
+`requires.network` needed for built-in key domains).
+
+**GOOGLE_API_KEY** — Gemini models via Google AI.
+
+```yaml
+requires:
+  secrets:
+    - name: GOOGLE_API_KEY
+      provider: google
+```
+
+```python
+from auriga.ion.vfs import get_secret
+from auriga.ion.output import output_json
+import httpx
+
+key = get_secret("GOOGLE_API_KEY")
+resp = httpx.post(
+    "https://generativelanguage.googleapis.com"
+    "/v1beta/models/gemini-2.0-flash:generateContent",
+    headers={"x-goog-api-key": key},
+    json={"contents": [{"parts": [{"text": "Hi"}]}]},
+)
+resp.raise_for_status()
+output_json(resp.json())
+```
+
+**ELEVENLABS_API_KEY** — text-to-speech via ElevenLabs.
+
+Restrictions enforced by the proxy:
+- Endpoints: `/v1/text-to-speech/**` and `/v1/models` only
+  (everything else 403)
+- Models: `eleven_flash_v2_5`, `eleven_multilingual_v2`,
+  `eleven_v3` (other model_ids 403)
+- Voice IDs: hardcode them — `/v1/voices` is blocked.
+  Default "Rachel": `21m00Tcm4TlvDq8ikWAM`
+
+```yaml
+requires:
+  secrets:
+    - name: ELEVENLABS_API_KEY
+      provider: elevenlabs
+```
+
+```python
+import sys
+import httpx
+from auriga.ion.vfs import get_secret
+from auriga.ion.output import output_json
+from auriga.ion.cards import build_file_download_card
+
+key = get_secret("ELEVENLABS_API_KEY")
+text = sys.argv[1] if len(sys.argv) > 1 else "Hello"
+resp = httpx.post(
+    "https://api.elevenlabs.io/v1/text-to-speech"
+    "/21m00Tcm4TlvDq8ikWAM",
+    headers={"xi-api-key": key},
+    json={"text": text, "model_id": "eleven_flash_v2_5"},
+)
+resp.raise_for_status()
+out = "/chat/files/speech.mp3"
+with open(out, "wb") as f:
+    f.write(resp.content)
+card = build_file_download_card(
+    card_id="tts-audio",
+    title="Generated Audio",
+    files=[{"name": "speech.mp3", "vfs_path": out,
+            "mime_type": "audio/mpeg"}],
+)
+output_json({"text": "Audio ready.", "cards": [card]})
+```
+
 ### Google OAuth
 
 ```yaml
