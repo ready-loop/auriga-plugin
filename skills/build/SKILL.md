@@ -450,11 +450,27 @@ Read API docs: `ion_read("/sys/docs/ion/{module}")` or
 `ion_read("/sys/docs/ion/google/{service}")`. Always check
 signatures before using convenience functions.
 
-### Producing downloadable files
+### Producing downloadable files and media
 
 Scripts write output files to `/chat/files/` and present
-them as download cards. The runtime normalises sandbox paths
-to absolute Ion URLs before sending to clients.
+them as download cards via `build_file_download_card`. The
+runtime normalises sandbox paths to absolute Ion URLs before
+sending to clients.
+
+The web client renders inline previews for media files
+based on `mime_type`:
+- **Audio** (audio/mpeg, audio/wav, etc.): native audio
+  player with playback controls
+- **Video** (video/mp4, video/webm, etc.): native video
+  player with playback controls
+- **Images** (image/png, image/jpeg, etc.): inline image
+  preview
+
+Always set `mime_type` on media files so the client renders
+the correct preview. Non-media files show a download link.
+This is the standard way to emit any generated media
+(images, audio, video) from a skill — do NOT base64-encode
+media into the response text.
 
 ```python
 #!/usr/bin/env python3
