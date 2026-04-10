@@ -547,6 +547,61 @@ exec_file("scripts/convert.py",
 per card are supported. `mime_type` is inferred from the
 extension if omitted. `size` (bytes) is optional.
 
+### Artifact chaining across turns
+
+Files in `/chat/files/` persist for the entire conversation.
+When a skill produces a file (image, audio, document) that the
+user may want to refine in subsequent turns, the script should
+accept an optional `--input` argument pointing to a previous
+output file.
+
+Pattern:
+- Script accepts `--input PATH` (optional). When provided,
+  the script reads the file and sends it alongside the new
+  prompt to the API for editing/refinement.
+- SKILL.md instructs the agent to detect refinement requests
+  ("change this", "add X to it", "make it more Y") and pass
+  `--input /chat/files/<previous_output>` to the script.
+- Without `--input`, the script generates from scratch.
+
+Example (image generation with Gemini):
+
+```python
+parser.add_argument("--input", default=None,
+                    help="Path to existing image to refine")
+args = parser.parse_args()
+
+parts = [{"text": full_prompt}]
+if args.input:
+    image_bytes = Path(args.input).read_bytes()
+    b64 = base64.b64encode(image_bytes).decode()
+    parts.insert(0, {
+        "inlineData": {"mimeType": "image/png", "data": b64}
+    })
+```
+
+SKILL.md refinement instructions:
+
+```
+## Refinement
+
+When the user asks to modify a previous output ("add X",
+"change Y", "make it more Z"), pass the existing file:
+
+  exec_file("scripts/generate.py",
+            ["add a party hat",
+             "--input", "/chat/files/output.png"],
+            skill_name="{SKILL_NAME}",
+            user_display_hint="Refining image...")
+
+Do NOT re-describe the entire scene — only describe the
+desired change.
+```
+
+This pattern works for any generative API that accepts
+input files (image editing, audio remixing, document
+revision).
+
 ## Researching APIs
 
 Do NOT rely on baked-in knowledge of APIs — it may be stale.
