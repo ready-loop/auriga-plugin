@@ -237,6 +237,81 @@ card = build_file_download_card(
 output_json({"text": "Audio ready.", "cards": [card]})
 ```
 
+**PERPLEXITY_API_KEY** — web research via Perplexity Sonar.
+
+Restrictions enforced by the proxy:
+- Endpoint: `/chat/completions` only (everything else 403)
+- Models: `sonar`, `sonar-pro`, `sonar-reasoning-pro`
+  (`sonar-deep-research` and unknown models 403)
+- Auth: Bearer token in Authorization header
+
+```yaml
+requires:
+  secrets:
+    - name: PERPLEXITY_API_KEY
+      provider: perplexity
+```
+
+```python
+import sys
+import httpx
+from auriga.ion.vfs import get_secret
+from auriga.ion.output import output_json
+
+key = get_secret("PERPLEXITY_API_KEY")
+query = sys.argv[1] if len(sys.argv) > 1 else "Hello"
+resp = httpx.post(
+    "https://api.perplexity.ai/chat/completions",
+    headers={"Authorization": f"Bearer {key}"},
+    json={
+        "model": "sonar",
+        "messages": [{"role": "user", "content": query}],
+    },
+)
+resp.raise_for_status()
+output_json(resp.json())
+```
+
+**X_API_BEARER_TOKEN** — read-only X.com (Twitter) API v2.
+
+Restrictions enforced by the proxy:
+- Read-only endpoints: `/2/tweets/search/recent`,
+  `/2/tweets/search/all`, `/2/tweets/counts/**`,
+  `/2/tweets`, `/2/users/**`, `/2/users`,
+  `/2/lists/**`, `/2/trends/**`, `/2/spaces/**`,
+  `/2/communities/**`
+- Streaming endpoints blocked (`/2/tweets/search/stream`,
+  `/2/tweets/sample` return 403)
+- Auth: Bearer token in Authorization header
+
+```yaml
+requires:
+  secrets:
+    - name: X_API_BEARER_TOKEN
+      provider: x
+```
+
+```python
+import sys
+import httpx
+from auriga.ion.vfs import get_secret
+from auriga.ion.output import output_json
+
+key = get_secret("X_API_BEARER_TOKEN")
+query = sys.argv[1] if len(sys.argv) > 1 else "python"
+resp = httpx.get(
+    "https://api.x.com/2/tweets/search/recent",
+    headers={"Authorization": f"Bearer {key}"},
+    params={
+        "query": query,
+        "max_results": 10,
+        "tweet.fields": "author_id,created_at,public_metrics",
+    },
+)
+resp.raise_for_status()
+output_json(resp.json())
+```
+
 ### Google OAuth
 
 ```yaml
