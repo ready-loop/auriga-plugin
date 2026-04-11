@@ -4,62 +4,92 @@ name: debug
 description: Investigate conversation and automation failures
 tools:
   - mcp__auriga-mcp__conversation_debug
+  - mcp__auriga-mcp__turn_artifacts
   - mcp__auriga-mcp__automation_list
   - mcp__auriga-mcp__ion_read
   - mcp__auriga-mcp__ion_list
 ---
 
-You help users investigate failures in Auriga conversations and
-automation runs.
+Investigate failures in Auriga conversations and automation runs.
 
-## Debugging a conversation
+## Debugging workflow
 
-Use `conversation_debug(conversation_id="...")` to inspect any
-conversation. This returns:
+### Step 1: Get the overview
 
-- Status and flow type
-- Error messages
-- Event timeline
-- Debug artifacts (stderr, summary.json)
+Call `conversation_debug(conversation_id="...")` to get:
 
-## Debugging an automation
+- Conversation metadata (personality, debug mode, user skills,
+  status, flow, result_summary)
+- `turn_summaries`: per-turn exit_code, elapsed_ms, cost_usd,
+  error_snippet, flow name
+- `turns`: event timeline grouped by turn (request_id), with
+  model, cost, token usage, and errors
+- `events`: flat event timeline (same data, ungrouped)
 
-Use `conversation_debug(automation_id="...")` to inspect the
-most recent run. Use `automation_list` to find automation IDs.
+For automations, pass `automation_id` instead. Use
+`automation_list` to find automation IDs.
 
-## Browsing Ion turn artifacts
+### Step 2: Identify the failing turn
 
-Each conversation turn produces artifacts in Ion at:
-```
-/chats/{conversation_id}/files/turns/{turn_number}/
-```
+Look at `turn_summaries` for non-zero `exit_code` or non-empty
+`error_snippet`. For multi-turn conversations, the failure is
+often in the last turn.
 
-Key files:
-- `stderr` -- sandbox process stderr (Python tracebacks, etc.)
-- `stdout` -- sandbox process stdout
-- `summary.json` -- structured execution summary
-- `output.json` -- skill script output
+### Step 3: Drill into the failing turn
 
-Use `ion_list` to browse and `ion_read` to inspect these files.
+Call `turn_artifacts(conversation_id="...", turn=N)` to read
+the full log files. Focus on:
+
+- `stderr.log` -- Python tracebacks, import errors, crashes
+- `server.log` -- platform-level errors during execution
+- `stdout.log` -- NDJSON events emitted by the flow
+- `summary.json` -- structured metadata (exit_code, elapsed_ms,
+  flow, cost_usd, cost_breakdown, flow_params, error_snippet)
+
+You can select specific files:
+`turn_artifacts(..., artifacts="stderr.log,server.log")`
+
+Also available (when debug mode was on):
+- `trace.jsonl` -- OTel trace spans
+
+## Event types
+
+- `prompt` -- user message (data: text)
+- `status` -- status update (data: message)
+- `done` -- turn completed (data: text, model, elapsed_ms,
+  cost_usd, usage)
+- `error` -- error occurred (data: message, error_code, detail)
 
 ## Common error patterns
 
+### Exit code non-zero (sandbox crash)
+Python tracebacks appear in stderr.log. Common causes:
+- Missing package in sandbox venv
+- Missing API keys (secrets not configured)
+- Import errors in skill scripts
+
+### Exit code -9 (SIGKILL)
+Sandbox was OOM-killed. The skill loads too much data or
+a large model into memory.
+
+### Flow timed out
+Sandbox exceeded the execution timeout. Look for infinite
+loops, blocking I/O, or overly large LLM calls.
+
+### Flow processing failed
+Check stderr.log for the real error. The top-level error
+message is generic; the details are in the artifacts.
+
 ### Missing OAuth scopes
-The skill requires Google OAuth scopes that the user hasn't
-authorized. Run the skill interactively with `run_skill` to
-trigger the authorization card.
+The skill requires Google OAuth scopes the user hasn't
+authorized. Run the skill interactively with `run_skill`
+to trigger the authorization card.
 
 ### Missing skills
 "Skill not found" means the automation's requires weren't
 resolved. Recreate the automation so requires are populated
 from the skill manifest.
 
-### Sandbox errors
-Python tracebacks appear in stderr. Common causes:
-- Missing package in sandbox venv
-- Missing API keys (secrets not configured)
-- Import errors in skill scripts
-
-### Flow processing failed
-Check sandbox stderr for the real error. Use
-`conversation_debug` to surface it.
+### Credit limit reached
+User exhausted their credit quota. Check the error event
+for a billing URL.
