@@ -834,11 +834,39 @@ relative paths), so copying requires no path fixup:
 3. Copy each file to `/skills/user/new-name/draft/` — update
    only the `name` field in SKILL.md frontmatter
 
-## Scheduling
+## Self-provisioned automations
 
-Publish the skill before scheduling. Automations should run
-against published versions, not drafts. Use the automation skill
-to schedule a skill as an automation.
+Skills can create and manage their own automations from scripts
+via `auriga.ion.automations`. Declare the capability by
+requesting VFS access to the automations subtree:
+
+    requires:
+      vfs:
+        - path: /sys/automations/*
+          access: write
+
+Without this `requires.vfs` entry `/sys/automations/` is not
+mounted into the sandbox and SDK calls raise `FileNotFoundError`.
+
+SDK (read `ion_read("/sys/docs/ion/automations")` for full
+signatures):
+
+- `create_automation(name=..., skill=..., cadence=..., ...)` —
+  allocate, configure, enable; returns the final name
+- `list_automations()` — names only (excludes `clone`)
+- `get_automation(name)` — full status dict
+- `update_automation(name, cadence=..., enabled=True)` — per
+  field writes
+- `enable_automation(name)` / `disable_automation(name)`
+- `delete_automation(name)`
+
+Capped at 20 automations per user; minimum cadence PT1H.
+
+Idempotent setup pattern: check `list_automations()` before
+creating so first-run setup doesn't duplicate on rerun.
+
+Publish the skill before scheduling — automations run against
+published versions, not drafts.
 
 ## App building
 
@@ -971,3 +999,4 @@ canonical text.
 
 - `ion_read("/sys/docs/guide")` — Ion SDK overview
 - `ion_read("/sys/docs/automations")` — scheduling skills
+- `ion_read("/sys/docs/ion/automations")` — automation SDK
