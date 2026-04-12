@@ -836,6 +836,16 @@ relative paths), so copying requires no path fixup:
 
 ## Self-provisioned automations
 
+Automations are the unified trigger mechanism for skills. One
+automation can combine any of three trigger types:
+
+- **Repeated tasks** — set `cadence` (ISO 8601 duration, e.g.
+  `P1D` daily, `P1W` weekly; minimum `PT1H`).
+- **One-off tasks** — set `initial_fire_at` (ISO 8601 datetime)
+  without a cadence. The automation fires once then goes idle.
+- **Webhooks** — set `webhook_enabled: true`. External systems
+  POST to the per-automation webhook URL to trigger a run.
+
 Skills can create and manage their own automations from scripts
 via `auriga.ion.automations`. Declare the capability by
 requesting VFS access to the automations subtree:
