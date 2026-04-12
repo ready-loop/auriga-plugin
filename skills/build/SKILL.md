@@ -864,9 +864,10 @@ signatures):
 - `create_automation(name=..., skill=..., cadence=..., ...)` —
   allocate, configure, enable; returns the final name
 - `list_automations()` — names only (excludes `clone`)
-- `get_automation(name)` — full status dict
-- `update_automation(name, cadence=..., enabled=True)` — per
-  field writes
+- `get_automation(name)` — returns an `AutomationStatus`
+  model (attribute access: `s.enabled`, `s.cadence`, ...)
+- `update_automation(name, AutomationUpdate(cadence=..., enabled=True))`
+  — typed partial update; only set fields are written
 - `enable_automation(name)` / `disable_automation(name)`
 - `delete_automation(name)`
 
