@@ -116,7 +116,8 @@ their SKILL.md frontmatter.
   - `vfs`: list of `{path, access}` (read/write, `/*` globs).
     Skills automatically have read+write access to their own
     `/skills/user/{slug}/*` tree. `requires.vfs` is only for
-    non-skill paths (like `/sys/channels/gchat/dm`).
+    non-skill paths (like `/sys/channels/gchat/dm` or
+    `/sys/channels/mail/send`).
 
 Populate `signup_url` and `instructions` on secrets so users
 know how to obtain the key.
@@ -237,6 +238,16 @@ card = build_file_download_card(
 output_json({"text": "Audio ready.", "cards": [card]})
 ```
 
+Pick the right card:
+- `action`: confirmation / choices with buttons.
+- `progress`: multi-step form status.
+- `file_download`: downloadable or previewable media files.
+- `social_posts`: feed items.
+- `html`: interactive widget / chart / custom form. Read
+  `/sys/docs/ion/cards` BEFORE emitting. Payloads must use
+  `rl-*` classes and `var(--rl-*)` tokens — do NOT hardcode
+  colors or fonts.
+
 **PERPLEXITY_API_KEY** — web research via Perplexity Sonar.
 
 Restrictions enforced by the proxy:
@@ -326,7 +337,8 @@ requires:
 ```
 
 Use `requires.vfs` only for non-skill paths (like
-`/sys/channels/gchat/dm`). A skill's own file tree is always
+`/sys/channels/gchat/dm` or `/sys/channels/mail/send`). A
+skill's own file tree is always
 accessible. To read another skill's files, use
 `requires.vfs` with the appropriate path.
 
@@ -552,7 +564,8 @@ packages.
 
 - `auriga.ion.output` — `output_json`, `output_error`
 - `auriga.ion.vfs` — VFS helpers, `get_secret`
-- `auriga.ion.cards` — `build_file_download_card`
+- `auriga.ion.cards` — `build_file_download_card`,
+  `build_html_card`
 - `auriga.ion.google` — `service()`
 - `auriga.ion.google.{calendar,gmail,sheets,drive,docs,slides}`
 
@@ -861,8 +874,13 @@ mounted into the sandbox and SDK calls raise `FileNotFoundError`.
 SDK (read `ion_read("/sys/docs/ion/automations")` for full
 signatures):
 
-- `create_automation(name=..., skill=..., cadence=..., ...)` —
-  allocate, configure, enable; returns the final name
+- `create_automation(name=..., cadence=..., ...)` — allocate,
+  configure, enable; returns the final name. The skill is implicit
+  (the running script); never pass `skill=`.
+- `schedule_in(timedelta(...), prompt=..., ...)` — one-off relative
+  to now; no cadence minimum applies.
+- `ensure_webhook(name=..., prompt=...)` — idempotent single
+  webhook per skill; returns the webhook URL directly.
 - `list_automations()` — names only (excludes `clone`)
 - `get_automation(name)` — returns an `AutomationStatus`
   model (attribute access: `s.enabled`, `s.cadence`, ...)
@@ -878,6 +896,28 @@ creating so first-run setup doesn't duplicate on rerun.
 
 Publish the skill before scheduling — automations run against
 published versions, not drafts.
+
+## Self-notifications by email
+
+Skills can email the running user from `agent.readyloop.ai` with
+no OAuth flow. Self-only: the recipient is always the current
+user. Declare the capability:
+
+    requires:
+      vfs:
+        - path: /sys/channels/mail/send
+          access: write
+
+SDK (read `ion_read("/sys/docs/ion/mail")` for full signature):
+
+- `from auriga.ion.mail import send_mail`
+- `send_mail(subject=..., body=..., html=None)` — returns the
+  Resend message id; raises `MailSendError` on failure.
+
+Use for digests, reminders, and scheduled briefings where Gmail
+OAuth is unavailable or overkill. Pair with
+`/sys/automations/*` for scheduled sends (see the
+`send-mail-automation` system skill for a worked example).
 
 ## App building
 
