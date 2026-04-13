@@ -1019,6 +1019,29 @@ create_app(
 )
 ```
 
+### Welcome cards (optional)
+
+Pass `welcome_cards` to render clickable starter cards on the
+app's empty state. Each card is `{icon, label, prompt}`. Clicking
+a card starts a conversation and auto-sends the `prompt` as the
+first user message. Up to 6 cards. `icon` is either a Tabler
+icon name like `"IconBolt"` or an emoji like `"⚡"`. `label` <=40
+chars, `prompt` <=500 chars.
+
+```python
+create_app(
+  app_name="my-app",
+  display_name="My App",
+  source_agent="my-skill-agent",
+  welcome_cards=[
+    {"icon": "IconBolt", "label": "Quick task",
+     "prompt": "Help me draft a reply"},
+    {"icon": "🔍", "label": "Search",
+     "prompt": "Find recent documents about X"},
+  ],
+)
+```
+
 ## Licensing
 
 When creating a new skill, ask the user what license they want.
