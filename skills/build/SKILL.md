@@ -98,6 +98,21 @@ their SKILL.md frontmatter.
   source. Use `"Custom"` only if neither fits. When set,
   include a LICENSE file in the skill root.
 - `metadata`: `sort_order` (int), `icon` (emoji)
+- `welcome_cards`: up to 6 starter cards rendered on the empty
+  state of any chat scoped to this skill (app mode, skill chat
+  tab). Each is `{icon, label, prompt}`; clicking auto-sends
+  `prompt`. `icon` is a Tabler name like `"IconBolt"` or an
+  emoji; `label` <=40 chars; `prompt` <=500 chars.
+
+  ```yaml
+  welcome_cards:
+    - icon: IconBolt
+      label: Summarize
+      prompt: Summarize my recent emails
+    - icon: 🔍
+      label: Search
+      prompt: Find recent docs about X
+  ```
 - `requires`:
   - `network`: list of base URLs the skill can reach
   - `secrets`: list of `{name}` with optional `provider`,
@@ -1016,29 +1031,6 @@ create_app(
     "--rl-primary-fg": "#ffffff",
     "--rl-border": "#e8d9b8",
   },
-)
-```
-
-### Welcome cards (optional)
-
-Pass `welcome_cards` to render clickable starter cards on the
-app's empty state. Each card is `{icon, label, prompt}`. Clicking
-a card starts a conversation and auto-sends the `prompt` as the
-first user message. Up to 6 cards. `icon` is either a Tabler
-icon name like `"IconBolt"` or an emoji like `"⚡"`. `label` <=40
-chars, `prompt` <=500 chars.
-
-```python
-create_app(
-  app_name="my-app",
-  display_name="My App",
-  source_agent="my-skill-agent",
-  welcome_cards=[
-    {"icon": "IconBolt", "label": "Quick task",
-     "prompt": "Help me draft a reply"},
-    {"icon": "🔍", "label": "Search",
-     "prompt": "Find recent documents about X"},
-  ],
 )
 ```
 
