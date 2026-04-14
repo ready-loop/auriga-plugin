@@ -31,6 +31,15 @@ NEVER search the local filesystem for skills. All skill data
 lives in Ion cloud storage. Use `discover_skills()` to list
 skills, `ion_list` to browse files, `ion_read` to read them.
 
+Use the MCP tools listed in this skill's `tools:` frontmatter
+(`create_draft`, `ion_write`, `publish_skill`, etc.) to perform
+every step of the build. If any of those tools appear missing
+from your tool list, the MCP server failed to connect — STOP
+and report "MCP server unavailable" to the user. Do NOT fall
+back to `RemoteTrigger`, generic HTTP calls, or printing file
+contents as instructions for the user to paste: those are not
+substitutes for the MCP tools and will produce a broken build.
+
 1. Identify skill name (kebab-case)
 2. `discover_skills()` to check if it exists (shows
    `latest_version` and `has_draft` per skill)
