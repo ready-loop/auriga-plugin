@@ -6,7 +6,9 @@ tools:
   - mcp__auriga-mcp__create_draft
   - mcp__auriga-mcp__discover_skills
   - mcp__auriga-mcp__ion_read
+  - mcp__auriga-mcp__ion_read_batch
   - mcp__auriga-mcp__ion_write
+  - mcp__auriga-mcp__ion_write_batch
   - mcp__auriga-mcp__ion_list
   - mcp__auriga-mcp__run_skill
   - mcp__auriga-mcp__publish_skill
@@ -46,11 +48,18 @@ substitutes for the MCP tools and will produce a broken build.
 3. `create_draft(skill_name)` to open a draft:
    - Existing published skill: draft is pre-populated with
      all files from the latest version (SKILL.md, scripts,
-     assets). Use `ion_list` to see what's there, then
-     `ion_read`/`ion_write` to update only files that need
-     changing. Do NOT rewrite files that are already correct.
+     assets). Use `ion_list` to see what's there, then pull
+     every file you need to inspect in a single
+     `ion_read_batch(["/skills/user/<slug>/draft/**"])` call
+     -- don't loop `ion_read`. Use `ion_write` for isolated
+     edits, `ion_write_batch` for multi-file updates. Do NOT
+     rewrite files that are already correct.
    - New skill: draft starts with a template SKILL.md.
      Write SKILL.md and scripts from scratch.
+   - When writing multiple files in a single turn, use
+     `ion_write_batch` (up to 100 files, 10 MiB per call).
+     Only fall back to `ion_write` for isolated single-file
+     edits -- looping `ion_write` hits per-IP rate limits.
 4. For all new skills, include a state-management script
    (`scripts/state.py` or integrated into the main script)
    and instruct the SKILL.md agent to load state at start
