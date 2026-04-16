@@ -277,9 +277,11 @@ Pick the right card:
 - `file_download`: downloadable or previewable media files.
 - `social_posts`: feed items.
 - `html`: interactive widget / chart / custom form. Read
-  `/sys/docs/ion/cards` BEFORE emitting. Payloads must use
-  `rl-*` classes and `var(--rl-*)` tokens — do NOT hardcode
-  colors or fonts.
+  `/sys/docs/ion/cards` for `build_html_card()` and
+  `/sys/docs/html-card` for the JS SDK surface
+  (`window.auriga.ion.files.*`, `skill.invoke`, `http.fetch`)
+  BEFORE emitting. Payloads must use `rl-*` classes and
+  `var(--rl-*)` tokens — do NOT hardcode colors or fonts.
 
 **PERPLEXITY_API_KEY** — web research via Perplexity Sonar.
 
@@ -355,6 +357,96 @@ resp = httpx.get(
 resp.raise_for_status()
 output_json(resp.json())
 ```
+
+**YOUTUBE_API_KEY** — YouTube Data API v3 search and metadata.
+
+Restrictions enforced by the proxy:
+- Endpoint: `/youtube/v3/**` only (everything else 403)
+- Auth: `?key=` query param (do NOT use a header — the proxy keeps
+  the key in the query string for this API)
+
+```yaml
+requires:
+  secrets:
+    - name: YOUTUBE_API_KEY
+      provider: google
+```
+
+```python
+import sys
+import httpx
+from auriga.ion.vfs import get_secret
+from auriga.ion.output import output_json
+
+key = get_secret("YOUTUBE_API_KEY")
+query = sys.argv[1] if len(sys.argv) > 1 else "python"
+resp = httpx.get(
+    "https://www.googleapis.com/youtube/v3/search",
+    params={
+        "part": "snippet",
+        "type": "video",
+        "maxResults": 5,
+        "q": query,
+        "key": key,
+    },
+)
+resp.raise_for_status()
+output_json(resp.json())
+```
+
+**GOOGLE_MAPS_API_KEY** — Google Maps Platform + Places API.
+
+Two domains, each with different auth:
+
+`maps.googleapis.com` — Geocoding, Directions, Distance Matrix,
+Elevation, Time Zone, Maps Static. Auth via `?key=` query param.
+Allowed endpoints: `/maps/api/geocode/**`, `/maps/api/directions/**`,
+`/maps/api/distancematrix/**`, `/maps/api/elevation/**`,
+`/maps/api/timezone/**`, `/maps/api/staticmap`.
+
+`places.googleapis.com` — Places API (New). Auth via
+`X-Goog-Api-Key` header. Allowed endpoints:
+`/v1/places:searchNearby`, `/v1/places:searchText`, `/v1/places/**`.
+
+```yaml
+requires:
+  secrets:
+    - name: GOOGLE_MAPS_API_KEY
+      provider: google
+```
+
+```python
+import httpx
+from auriga.ion.vfs import get_secret
+from auriga.ion.output import output_json
+
+key = get_secret("GOOGLE_MAPS_API_KEY")
+
+# Maps API: key goes in ?key= query param
+resp = httpx.get(
+    "https://maps.googleapis.com/maps/api/geocode/json",
+    params={"address": "Sydney Opera House", "key": key},
+)
+resp.raise_for_status()
+result = resp.json()["results"][0]
+lat = result["geometry"]["location"]["lat"]
+lng = result["geometry"]["location"]["lng"]
+
+# Places API (New): key goes in X-Goog-Api-Key header
+resp2 = httpx.post(
+    "https://places.googleapis.com/v1/places:searchText",
+    headers={
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": "places.displayName,places.formattedAddress",
+    },
+    json={"textQuery": "coffee near Sydney Opera House", "maxResultCount": 5},
+)
+resp2.raise_for_status()
+output_json(resp2.json())
+```
+
+For static map images, write PNG bytes to `/chat/files/<name>.png` and
+emit with `build_file_download_card` (see `auriga.ion.cards.builders`).
 
 ### Google OAuth
 
