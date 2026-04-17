@@ -287,6 +287,10 @@ Pick the right card:
   (`window.auriga.ion.files.*`, `skill.invoke`, `http.fetch`)
   BEFORE emitting. Payloads must use `rl-*` classes and
   `var(--rl-*)` tokens — do NOT hardcode colors or fonts.
+  For forms/selections, use
+  `skill.invoke(button_id, args)` and read the payload next
+  turn via `read_card_action()["args"]` — don't stringify
+  values into prompt text.
 
 **PERPLEXITY_API_KEY** — web research via Perplexity Sonar.
 
