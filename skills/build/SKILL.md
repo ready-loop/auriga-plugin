@@ -12,7 +12,12 @@ tools:
   - mcp__auriga-mcp__ion_list
   - mcp__auriga-mcp__run_skill
   - mcp__auriga-mcp__publish_skill
+  - mcp__auriga-mcp__list_apps
+  - mcp__auriga-mcp__get_app
   - mcp__auriga-mcp__create_app
+  - mcp__auriga-mcp__update_app
+  - mcp__auriga-mcp__rename_app
+  - mcp__auriga-mcp__delete_app
 ---
 
 You help users build Auriga skills stored in Ion cloud storage.
@@ -1064,14 +1069,43 @@ publish it using the normal skill workflow above.
 
 1. Publish the backing skill (the `source_agent`)
 2. `create_app(app_name, display_name, source_agent,
-   description, app_tagline)` — app is immediately live
+   description, app_tagline)` — app is immediately live at
+   `https://{app_name}.app.readyloop-staging.dev/`
 
-The app is available at
-`https://{app_name}.app.readyloop-staging.dev/`.
+### CRUD verbs
 
-To update an existing app (change theme, tagline, etc.),
-call `create_app` again with the same `app_name`. All
-fields are replaced; the slug and app_key are preserved.
+- `list_apps()` — enumerate apps owned by the user
+- `get_app(app_name)` — full detail for one app
+- `create_app(...)` — create (also upserts for backcompat)
+- `update_app(app_name, display_name=..., app_tagline=...,
+  custom_css_vars=..., source_agent=..., enabled=...)` —
+  partial PATCH. Only fields you pass are changed. Use this
+  for renames/rebrands of visible text; do NOT call
+  `create_app` to edit.
+- `rename_app(app_name, new_app_name)` — change the
+  subdomain. DB-only, no file copies. Version history is
+  preserved.
+- `delete_app(app_name)` — destructive. Confirm with the
+  user first.
+
+### Rebrand / rename rule (READ THIS)
+
+The sign-in page heading, chat header, and tagline come
+from the **app row** (`display_name`, `app_tagline`), NOT
+from the backing skill's SKILL.md. Editing SKILL.md alone
+will NOT change anything the end user sees on
+`{slug}.app.readyloop-staging.dev`.
+
+When the user asks to rename, rebrand, or change branding
+on an app:
+
+1. `list_apps()` to find the backing app(s) for the skill
+2. `update_app(app_name, display_name=..., app_tagline=...)`
+   to change visible text (subdomain stays the same)
+3. `rename_app(app_name, new_app_name)` to also change the
+   subdomain (old one 404s; Phase 2 will add redirects)
+4. Only edit the skill's SKILL.md if the *assistant's*
+   behavior or system prompt needs to change
 
 ### What the platform provides
 
