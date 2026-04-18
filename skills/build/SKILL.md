@@ -277,7 +277,15 @@ output_json({"text": "Audio ready.", "cards": [card]})
 ```
 
 Pick the right card:
-- `action`: confirmation / choices with buttons.
+- `quick_reply`: **preferred for A/B/C choice.** Tappable prompt
+  continuations that collapse to plain text on tap. Works
+  uniformly across web, WhatsApp, and voice. Use
+  `build_quick_reply(text=..., suggestions=["Yes", "No"])`; the
+  selected label arrives as the next user turn text.
+- `action`: confirmation / choices with **structured** buttons.
+  Only reach for this when you need `card_id`/`button_id`
+  identity (stale-turn rejection, analytics) or `args` payloads.
+  Degrades to quick-reply on WhatsApp and is invisible on voice.
 - `progress`: multi-step form status.
 - `file_download`: downloadable or previewable media files.
 - `social_posts`: feed items.
