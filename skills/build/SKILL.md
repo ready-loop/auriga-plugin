@@ -282,6 +282,15 @@ Pick the right card:
   uniformly across web, WhatsApp, and voice. Use
   `build_quick_reply(text=..., suggestions=["Yes", "No"])`; the
   selected label arrives as the next user turn text.
+- `markdown`: **preferred for structured prose** (itineraries,
+  specs, recipes, summaries). One-way content with no tappable
+  affordances. Renders as a markdown bubble on web, WhatsApp
+  dialect inline on Twilio (headings -> bold, bullets -> `- `,
+  links -> `label (url)`), and reference material on voice
+  (model summarises rather than reads verbatim). Use
+  `build_markdown_card(markdown=..., title=...)`. Write
+  CommonMark with WhatsApp as the floor: no tables, no nested
+  inline links, <=16 KiB body.
 - `action`: confirmation / choices with **structured** buttons.
   Only reach for this when you need `card_id`/`button_id`
   identity (stale-turn rejection, analytics) or `args` payloads.
