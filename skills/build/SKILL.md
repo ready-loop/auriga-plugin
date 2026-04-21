@@ -77,7 +77,12 @@ substitutes for the MCP tools and will produce a broken build.
    scopes, oauth, cards, claude_chat)
    Do NOT guess at function signatures.
 6. Test with `run_skill(skill_name, prompt)` — iterate
-7. `publish_skill(skill_name)` to release
+7. If you set a `license` field in SKILL.md, write the LICENSE
+   file to the draft *before* publishing. Publishing with a
+   `license` field but no LICENSE file emits a warning and
+   closes the draft, forcing a `create_draft()` + re-publish
+   cycle.
+8. `publish_skill(skill_name)` to release
 
 IMPORTANT: A skill is not ready for use until published. Always
 call `publish_skill(skill_name)` after successful testing. Do not
@@ -1152,7 +1157,9 @@ Primary action: `--rl-primary`, `--rl-primary-fg`
 Accent: `--rl-accent`, `--rl-accent-fg`
 Borders: `--rl-border`, `--rl-border-strong`
 Danger: `--rl-danger`
-Other: `--rl-shadow-card`, `--rl-radius`, `--rl-radius-lg`
+
+Geometry (`--rl-radius`, `--rl-radius-lg`, `--rl-shadow-card`)
+is platform-pinned and cannot be overridden.
 
 **Contrast rules** (WCAG AA):
 - `--rl-fg` must contrast with `--rl-bg` (4.5:1 min)
@@ -1224,7 +1231,9 @@ and write it to the LICENSE file.
 
 Publishing validates that the `license` field and LICENSE file
 are consistent. For SPDX IDs, the LICENSE file must match the
-canonical text.
+canonical text. Write LICENSE as part of the initial draft, not
+after `publish_skill` — publishing with the field set but no
+file emits a warning and closes the draft.
 
 ## Further reading
 
